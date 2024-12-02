@@ -50,7 +50,7 @@ class PostgresSupplier(pavao.ParameterSupplier):
 				None
 			],
 
-			'db_connection': [
+			'pg_connection': [
 				self.create_connection,
 				self.close_connection
 			]
