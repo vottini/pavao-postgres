@@ -1,0 +1,9 @@
+/.env
+/base
+/__pycache__
+*.pyc
+.coverage
+pavao.log
+application.yml
+/endpoints
+/docs/build
