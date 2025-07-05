@@ -11,7 +11,6 @@ database_schema = {
 	"password": ""
 }
 
-
 class PostgresSupplier(pavao.ParameterSupplier):
 	def __init__(self):
 		self.pool = None
@@ -34,6 +33,7 @@ class PostgresSupplier(pavao.ParameterSupplier):
 		try:
 			self.pool = await asyncpg.create_pool(**self.config)
 			pavao.Logger.info("PostgreSQL database connected")
+			pavao.register_mapping_class(asyncpg.Record)
 
 		except Exception as e:
 			pavao.Logger.error("Error while setting up PostgreSQL database: " + str(e))
