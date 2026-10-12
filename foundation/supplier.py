@@ -1,14 +1,20 @@
 
-import asyncio
+import os
 import asyncpg
 import pavao
+
+from .pg_task_store import PostgresTaskStore, PostgresStoredSettings
+
+schema_dir = pavao.path_to('database')
+schema_files = sorted(f for f in os.listdir(schema_dir) if f.endswith('.sql'))
 
 database_schema = {
 	"host": str,
 	"port": 5432,
 	"database": str,
 	"user": str,
-	"password": ""
+	"password": "",
+	"task_store": False,
 }
 
 class PostgresSupplier(pavao.ParameterSupplier):
@@ -29,11 +35,23 @@ class PostgresSupplier(pavao.ParameterSupplier):
 
 
 	async def initialize(self):
+		if not self.enabled:
+			return
 
 		try:
-			self.pool = await asyncpg.create_pool(**self.config)
+			connect_args = {k: self.config[k]
+				for k in ('host', 'port', 'database', 'user', 'password')}
+
+			self.pool = await asyncpg.create_pool(**connect_args)
 			pavao.Logger.info("PostgreSQL database connected")
 			pavao.register_mapping_class(asyncpg.Record)
+
+			if self.config['task_store']:
+				async with self.pool.acquire() as conn:
+					for filename in schema_files:
+						with open(os.path.join(schema_dir, filename)) as fd:
+							await conn.execute(fd.read())
+				pavao.Logger.info("PostgreSQL task store schema ready")
 
 		except Exception as e:
 			pavao.Logger.error("Error while setting up PostgreSQL database: " + str(e))
@@ -44,7 +62,7 @@ class PostgresSupplier(pavao.ParameterSupplier):
 		if not self.enabled:
 			return dict()
 
-		return {
+		params = {
 			'pg_pool': [
 				self.retrieve_pool,
 				None
@@ -55,6 +73,18 @@ class PostgresSupplier(pavao.ParameterSupplier):
 				self.close_connection
 			]
 		}
+
+		if self.config['task_store']:
+			async def provide_task_store():
+				return PostgresTaskStore(self.pool)
+
+			async def provide_stored_settings():
+				return PostgresStoredSettings(self.pool)
+
+			params['task_store'] = [provide_task_store, None]
+			params['stored_settings'] = [provide_stored_settings, None]
+
+		return params
 
 	#------------------------------------------------------------
 
@@ -69,4 +99,3 @@ class PostgresSupplier(pavao.ParameterSupplier):
 			await self.pool.close()
 			pavao.Logger.info("PostgreSQL database pool closed")
 			self.pool = None
-
