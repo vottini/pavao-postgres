@@ -3,8 +3,8 @@ import asyncpg
 import pytest
 import pytest_asyncio
 
-from foundation.supplier import SmartConnection
-from foundation.pg_task_store import PostgresTaskStore, PostgresStoredSettings
+from foundation.postgres.supplier import SmartConnection
+from foundation.postgres.pg_task_store import PostgresTaskStore, PostgresStoredSettings
 
 
 def _load_env_test():
@@ -35,7 +35,7 @@ def db_config():
 async def pool(db_config):
     p = await asyncpg.create_pool(**db_config)
 
-    schema_dir = os.path.join(os.path.dirname(__file__), '..', 'foundation', 'database')
+    schema_dir = os.path.join(os.path.dirname(__file__), '..', 'foundation', 'postgres', 'database')
     schema_files = sorted(f for f in os.listdir(schema_dir) if f.endswith('.sql'))
 
     async with p.acquire() as conn:
