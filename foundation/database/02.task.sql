@@ -1,3 +1,4 @@
+
 CREATE TABLE IF NOT EXISTS pavao.task (
 	id      SERIAL PRIMARY KEY,
 	package TEXT,
@@ -5,3 +6,4 @@ CREATE TABLE IF NOT EXISTS pavao.task (
 	enabled BOOLEAN DEFAULT TRUE,
 	UNIQUE (package, name)
 );
+

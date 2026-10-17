@@ -14,7 +14,7 @@ database_schema = {
 	"database": str,
 	"user": str,
 	"password": "",
-	"task_store": False,
+	"pavao_backend": False,
 }
 
 class PostgresSupplier(pavao.ParameterSupplier):
@@ -46,7 +46,7 @@ class PostgresSupplier(pavao.ParameterSupplier):
 			pavao.Logger.info("PostgreSQL database connected")
 			pavao.register_mapping_class(asyncpg.Record)
 
-			if self.config['task_store']:
+			if self.config['pavao_backend']:
 				async with self.pool.acquire() as conn:
 					for filename in schema_files:
 						with open(os.path.join(schema_dir, filename)) as fd:
@@ -74,7 +74,7 @@ class PostgresSupplier(pavao.ParameterSupplier):
 			]
 		}
 
-		if self.config['task_store']:
+		if self.config['pavao_backend']:
 			async def provide_task_store():
 				return PostgresTaskStore(self.pool)
 

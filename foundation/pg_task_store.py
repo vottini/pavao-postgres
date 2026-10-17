@@ -94,6 +94,7 @@ class PostgresTaskStore(pavao.TaskStore):
 #-------------------------------------------------------------------------------
 
 _list_pattern = re.compile(r"\[([^\]]+)\]")
+_supported_types = {'int', 'str', 'bool', 'float'}
 
 class PostgresStoredSettings(pavao.StoredSettings):
 
@@ -108,8 +109,14 @@ class PostgresStoredSettings(pavao.StoredSettings):
 			return None
 
 		typ, value = row['type'], row['value']
+		if typ not in _supported_types:
+			raise ValueError(f"Unsupported setting type: {typ!r}")
+
 		ctor = getattr(builtins, typ)
 		list_search = _list_pattern.search(value)
+
+		if value == '[]':
+			return []
 
 		if list_search is not None:
 			return [ctor(v) for v in list_search.group(1).split("::")]
@@ -120,7 +127,7 @@ class PostgresStoredSettings(pavao.StoredSettings):
 		value_type = type(value).__name__
 
 		if isinstance(value, collections.abc.Sequence) and not isinstance(value, str):
-			value_type = type(value[0]).__name__
+			value_type = type(value[0]).__name__ if value else 'str'
 			value = f"[{'::'.join(map(str, value))}]"
 
 		async with self.pool.acquire() as conn:
