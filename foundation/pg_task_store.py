@@ -112,11 +112,17 @@ class PostgresStoredSettings(pavao.StoredSettings):
 		if typ not in _supported_types:
 			raise ValueError(f"Unsupported setting type: {typ!r}")
 
-		ctor = getattr(builtins, typ)
-		list_search = _list_pattern.search(value)
-
 		if value == '[]':
 			return []
+
+		list_search = _list_pattern.search(value)
+
+		if typ == 'bool':
+			if list_search is not None:
+				return [s.lower() in ('true', '1') for s in list_search.group(1).split("::")]
+			return value.lower() in ('true', '1')
+
+		ctor = getattr(builtins, typ)
 
 		if list_search is not None:
 			return [ctor(v) for v in list_search.group(1).split("::")]
@@ -128,7 +134,12 @@ class PostgresStoredSettings(pavao.StoredSettings):
 
 		if isinstance(value, collections.abc.Sequence) and not isinstance(value, str):
 			value_type = type(value[0]).__name__ if value else 'str'
+			if value and not all(type(v).__name__ == value_type for v in value):
+				raise ValueError("All list elements must share the same type")
 			value = f"[{'::'.join(map(str, value))}]"
+
+		if value_type not in _supported_types:
+			raise ValueError(f"Unsupported setting type: {value_type!r}")
 
 		async with self.pool.acquire() as conn:
 			await conn.execute(_upsert_setting, key, value_type, str(value))

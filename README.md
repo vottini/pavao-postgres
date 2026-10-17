@@ -1,6 +1,52 @@
 # pavao-postgres
 
-PostgreSQL backend module for [pavao](https://github.com/vottini/pavao), providing async connection pooling, a task store, and a key-value settings store.
+PostgreSQL backend module for [pavao](https://github.com/vottini/pavao), providing async
+connection pooling, a task store, and a key-value settings store.
+
+## Usage
+
+Once installed and configured, pavao injects a `pg_connection` into any endpoint
+or task that declares it as a parameter:
+
+```python
+from foundation.postgres.supplier import named
+
+user_bp = """
+
+root {
+  id: Integer,
+  name: String,
+  email: String
+}
+
+"""
+
+_get_user = named('SELECT id, name, email FROM users WHERE id = :id')
+
+
+@pavao.generates_json(string_blueprint=user_bp)
+async def get_user(response, path_variables, pg_connection):
+    row = await pg_connection.fetchrow(_get_user, id=path_variables['user_id'])
+
+    if row is None:
+        response.status(404)
+        return
+
+    return row
+
+
+def pavao_endpoint():
+    return {
+        'method': 'GET',
+        'path': '/users/{user_id:int}',
+        'processor': get_user,
+    }
+
+```
+
+`named(sql)` translates `:param` placeholders to asyncpg positional parameters **once at module load time**, so there is no translation overhead per request. The plain positional form (`$1, $2, ...`) also works — `pg_connection` accepts both transparently.
+
+The connection is acquired from the pool before the handler runs and released automatically when it returns. `@pavao.generates_json` serializes the returned dict as the response body. See [pavao decorators](https://pavao.readthedocs.io/en/latest/sections/decorators.html) for more information.
 
 ## Installation
 
@@ -25,7 +71,7 @@ your_project/
     └── postgres/        ← (empty for this extension)
 ```
 
-After cloning a project that already uses this extension, restore the files with:
+After cloning a project that uses this extension, download the postgres backend with:
 
 ```
 pavao-pkg sync

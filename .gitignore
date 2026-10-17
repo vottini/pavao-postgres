@@ -1,4 +1,5 @@
 /.env
+tests/environment
 /base
 /__pycache__
 *.pyc

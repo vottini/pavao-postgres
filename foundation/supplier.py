@@ -1,12 +1,65 @@
 
 import os
+import re
 import asyncpg
 import pavao
 
 from .pg_task_store import PostgresTaskStore, PostgresStoredSettings
 
-schema_dir = pavao.path_to('database')
-schema_files = sorted(f for f in os.listdir(schema_dir) if f.endswith('.sql'))
+#-------------------------------------------------------------------------------
+
+_named_param_re = re.compile(r'(?<!:):(\w+)')
+
+class NamedQuery:
+	__slots__ = ('sql', 'params')
+
+	def __init__(self, sql):
+		params = []
+		def replace(m):
+			params.append(m.group(1))
+			return f'${len(params)}'
+		self.sql = _named_param_re.sub(replace, sql)
+		self.params = params
+
+	def args(self, kwargs):
+		return [kwargs[p] for p in self.params]
+
+def named(sql):
+	return NamedQuery(sql)
+
+#-------------------------------------------------------------------------------
+
+class SmartConnection:
+	__slots__ = ('_conn',)
+
+	def __init__(self, conn):
+		self._conn = conn
+
+	def _resolve(self, query, args, kwargs):
+		if isinstance(query, NamedQuery):
+			return query.sql, query.args(kwargs)
+		return query, args
+
+	async def execute(self, query, *args, **kwargs):
+		sql, positional = self._resolve(query, args, kwargs)
+		return await self._conn.execute(sql, *positional)
+
+	async def fetch(self, query, *args, **kwargs):
+		sql, positional = self._resolve(query, args, kwargs)
+		return await self._conn.fetch(sql, *positional)
+
+	async def fetchrow(self, query, *args, **kwargs):
+		sql, positional = self._resolve(query, args, kwargs)
+		return await self._conn.fetchrow(sql, *positional)
+
+	async def fetchval(self, query, *args, **kwargs):
+		sql, positional = self._resolve(query, args, kwargs)
+		return await self._conn.fetchval(sql, *positional)
+
+	def transaction(self):
+		return self._conn.transaction()
+
+#-------------------------------------------------------------------------------
 
 database_schema = {
 	"host": str,
@@ -47,6 +100,8 @@ class PostgresSupplier(pavao.ParameterSupplier):
 			pavao.register_mapping_class(asyncpg.Record)
 
 			if self.config['pavao_backend']:
+				schema_dir = pavao.path_to('database')
+				schema_files = sorted(f for f in os.listdir(schema_dir) if f.endswith('.sql'))
 				async with self.pool.acquire() as conn:
 					for filename in schema_files:
 						with open(os.path.join(schema_dir, filename)) as fd:
@@ -89,8 +144,8 @@ class PostgresSupplier(pavao.ParameterSupplier):
 	#------------------------------------------------------------
 
 	async def retrieve_pool(self): return self.pool
-	async def create_connection(self): return await self.pool.acquire()
-	async def close_connection(self, conn): await self.pool.release(conn)
+	async def create_connection(self): return SmartConnection(await self.pool.acquire())
+	async def close_connection(self, conn): await self.pool.release(conn._conn)
 
 	#------------------------------------------------------------
 

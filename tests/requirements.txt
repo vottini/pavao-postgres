@@ -1,0 +1,5 @@
+asyncpg==0.32.0
+coverage==7.16.2
+pavao==0.10.2
+pytest==9.1.1
+pytest-asyncio==1.4.0
