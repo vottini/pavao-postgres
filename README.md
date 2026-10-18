@@ -48,6 +48,21 @@ def pavao_endpoint():
 
 The connection is acquired from the pool before the handler runs and released automatically when it returns. `@pavao.generates_json` serializes the returned dict as the response body. See [pavao decorators](https://pavao.readthedocs.io/en/latest/sections/decorators.html) for more information.
 
+`pg_connection` accepts both named queries (via [namedquery](https://github.com/vottini/namedquery)) and raw positional queries interchangeably:
+
+```python
+# named parameters — translated once at module load, zero cost per call
+_by_id   = named("SELECT * FROM users WHERE id = :id")
+_by_role = named("SELECT * FROM users WHERE role = :role AND active = :active")
+
+await pg_connection.fetchrow(_by_id, id=1)
+await pg_connection.fetch(_by_role, role='admin', active=True)
+
+# raw positional — standard asyncpg syntax, works as-is
+await pg_connection.fetchrow("SELECT * FROM users WHERE id = $1", 1)
+await pg_connection.fetch("SELECT * FROM users WHERE role = $1 AND active = $2", 'admin', True)
+```
+
 ## Installation
 
 Use `pavao-pkg` to vendor this extension into your project:
