@@ -9,7 +9,7 @@ Once installed and configured, pavao injects a `pg_connection` into any endpoint
 or task that declares it as a parameter:
 
 ```python
-from foundation.postgres.named import named
+from namedquery import named
 
 user_bp = """
 

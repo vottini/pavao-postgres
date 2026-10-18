@@ -1,5 +1,5 @@
 import pytest
-from foundation.postgres.named import named
+from namedquery import named
 
 
 def test_single_param():

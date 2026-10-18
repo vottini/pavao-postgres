@@ -3,8 +3,7 @@ import os
 import asyncpg
 import pavao
 
-from .named import NamedQuery
-from .pg_task_store import PostgresTaskStore, PostgresStoredSettings
+pavao.from_module('pg_task_store.py').import_item('PostgresTaskStore').import_item('PostgresStoredSettings')
 
 #-------------------------------------------------------------------------------
 
@@ -15,7 +14,7 @@ class SmartConnection:
 		self._conn = conn
 
 	def _resolve(self, query, args, kwargs):
-		if isinstance(query, NamedQuery):
+		if not isinstance(query, str):
 			return query.sql, query.args(kwargs)
 		return query, args
 

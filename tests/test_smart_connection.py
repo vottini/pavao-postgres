@@ -1,4 +1,4 @@
-from foundation.postgres.named import named
+from namedquery import named
 
 
 async def test_positional_fetchrow(connection):
