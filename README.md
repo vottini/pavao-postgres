@@ -1,5 +1,7 @@
 # pavao-postgres
 
+[![GitHub tag](https://img.shields.io/github/v/tag/vottini/pavao-postgres?label=latest&color=blue)](https://github.com/vottini/pavao-postgres/tags)
+
 PostgreSQL backend module for [pavao](https://github.com/vottini/pavao), providing async
 connection pooling, a task store, and a key-value settings store.
 
@@ -44,23 +46,16 @@ def pavao_endpoint():
 
 ```
 
-`named(sql)` translates `:param` placeholders to asyncpg positional parameters **once at module load time**, so there is no translation overhead per request. The plain positional form (`$1, $2, ...`) also works — `pg_connection` accepts both transparently.
-
 The connection is acquired from the pool before the handler runs and released automatically when it returns. `@pavao.generates_json` serializes the returned dict as the response body. See [pavao decorators](https://pavao.readthedocs.io/en/latest/sections/decorators.html) for more information.
 
-`pg_connection` accepts both named queries (via [namedquery](https://github.com/vottini/namedquery)) and raw positional queries interchangeably:
+`pg_connection` accepts both [namedquery](https://github.com/vottini/namedquery) queries and raw asyncpg positional queries interchangeably:
 
 ```python
-# named parameters — translated once at module load, zero cost per call
-_by_id   = named("SELECT * FROM users WHERE id = :id")
-_by_role = named("SELECT * FROM users WHERE role = :role AND active = :active")
+# named — translated once at module load, zero cost per call
+await pg_connection.fetchrow(named("SELECT * FROM users WHERE id = :id"), id=1)
 
-await pg_connection.fetchrow(_by_id, id=1)
-await pg_connection.fetch(_by_role, role='admin', active=True)
-
-# raw positional — standard asyncpg syntax, works as-is
+# raw positional — standard asyncpg syntax
 await pg_connection.fetchrow("SELECT * FROM users WHERE id = $1", 1)
-await pg_connection.fetch("SELECT * FROM users WHERE role = $1 AND active = $2", 'admin', True)
 ```
 
 ## Installation
@@ -80,10 +75,8 @@ The following directories will be created inside your project:
 
 ```
 your_project/
-├── foundation/
-│   └── postgres/        ← supplier and task store implementation
-└── modules/
-    └── postgres/        ← (empty for this extension)
+└── foundation/
+    └── postgres/        ← supplier and task store implementation
 ```
 
 After cloning a project that uses this extension, download the postgres backend with:
