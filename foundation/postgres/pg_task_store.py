@@ -14,6 +14,7 @@ _register_task_select  = pavao.include('queries/register_task_select.sql')
 _start_execution       = pavao.include('queries/start_execution.sql')
 _record_output         = pavao.include('queries/record_output.sql')
 _finish_execution      = pavao.include('queries/finish_execution.sql')
+_set_task_enabled      = pavao.include('queries/set_task_enabled.sql')
 _list_tasks            = pavao.include('queries/list_tasks.sql')
 _get_executions        = pavao.include('queries/get_executions.sql')
 _get_executions_by_day = pavao.include('queries/get_executions_by_day.sql')
@@ -64,6 +65,13 @@ class PostgresTaskStore(pavao.TaskStore):
 
 		async with self.pool.acquire() as conn:
 			await conn.execute(_finish_execution, ended_at, success, execution_id)
+
+	async def set_task_enabled(self,
+		task_id: int,
+		enabled: bool) -> None:
+
+		async with self.pool.acquire() as conn:
+			await conn.execute(_set_task_enabled, enabled, task_id)
 
 	async def list_tasks(self) -> list:
 		async with self.pool.acquire() as conn:
